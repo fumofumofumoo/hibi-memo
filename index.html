@@ -133,7 +133,10 @@ button{cursor:pointer}
 .box.grow{flex:1;min-height:180px}
 textarea{flex:1;border:0;resize:none;background:transparent;font-size:15px;line-height:1.7;outline:none;min-height:110px}
 .fld{width:100%;border:2px solid var(--ink);border-radius:14px;background:var(--white);font-size:15px;padding:11px 12px;outline:none}
+.fld[type=date],.fld[type=time]{display:block;-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;min-height:48px;text-align:center}
+.fld[type=date]::-webkit-date-and-time-value,.fld[type=time]::-webkit-date-and-time-value{text-align:center;min-width:0}
 .r2{display:flex;gap:8px;align-items:center}
+.r2 .fld{flex:1;min-width:0}
 .moods{display:flex;align-items:center;gap:6px;padding-top:10px;border-top:2px solid var(--bg);margin-top:8px;font-size:12px;font-weight:700}
 .md{width:34px;height:34px;border-radius:17px;border:2px solid var(--ink);background:var(--white);font-size:12px;font-weight:700;padding:0}
 .md.on{background:var(--lime);font-weight:800}
