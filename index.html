@@ -628,6 +628,12 @@ document.addEventListener('click', function (e) {
   }
 });
 document.addEventListener('change', function (e) {
+  if (e.target.id === 'fStart' && /^\d{1,2}:\d{2}$/.test(e.target.value)) {
+    // 開始時間を入力したら、終了時間は1時間後（23:59が上限）
+    var sp = e.target.value.split(':'), mins = Math.min(+sp[0] * 60 + +sp[1] + 60, 23 * 60 + 59);
+    $('fEnd').value = pad(Math.floor(mins / 60)) + ':' + pad(mins % 60);
+    saveDraft();
+  }
   var id = e.target.dataset && e.target.dataset.rename;
   if (id) { var name = e.target.value.trim(); if (name) api('shopRename', { id: id, name: name }).then(setShop, fail); }
 });
