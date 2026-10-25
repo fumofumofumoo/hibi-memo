@@ -47,7 +47,8 @@ button{cursor:pointer}
 
 /* stats */
 .cnt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.cnt>div{border:2px solid var(--ink);border-radius:18px;padding:10px}
+.cnt>div,.cnt>button{border:2px solid var(--ink);border-radius:18px;padding:10px}
+.cnt>button{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
 .cnt .k{font-size:11px;font-weight:700}
 .cnt .v{font-family:'Dela Gothic One',sans-serif;font-size:24px;line-height:1.2}
 .cnt .u{font-family:'M PLUS 2',sans-serif;font-size:11px;font-weight:700}
@@ -372,7 +373,7 @@ function renderHome() {
   $('addBtn').style.display = S.selDate === S.todayStr ? '' : 'none';
 }
 function cntCell(cat, n, unit) {
-  return '<div style="background:' + CATS[cat].color + '"><div class="k">' + CATS[cat].label + '</div><div class="v">' + n + '<span class="u">' + unit + '</span></div></div>';
+  return '<button data-gotab="' + cat + '" aria-label="' + CATS[cat].label + 'の一覧を開く" style="background:' + CATS[cat].color + '"><div class="k">' + CATS[cat].label + '</div><div class="v">' + n + '<span class="u">' + unit + '</span></div></button>';
 }
 function entHtml(i) {
   var right = '';
@@ -610,6 +611,7 @@ document.addEventListener('click', function (e) {
   if (ds.toggle) return shopToggle(ds.toggle);
   if (ds.del) { S.shop = S.shop.filter(function (x) { return x.id !== ds.del; }); renderAll(); return api('shopDelete', { id: ds.del }).then(setShop, fail); }
   if (ds.tab) { S.listTab = ds.tab; return renderList(); }
+  if (ds.gotab) { S.listTab = ds.gotab; return go('list'); }
   if (ds.cat) { saveDraft(); var from = S.sheetCat; S.sheetCat = ds.cat; carryOver(from, ds.cat); return renderSheet(); }
   if (ds.prompt) { saveDraft(); S.prompt = ds.prompt; return renderSheet(); }
   if (ds.mood) { var n = +ds.mood; S.mood = S.mood === n ? null : n; document.querySelectorAll('.md').forEach(function (b) { b.classList.toggle('on', +b.dataset.mood === S.mood); }); return; }
