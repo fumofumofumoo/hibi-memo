@@ -524,9 +524,21 @@ function saveDraft() {
   else draft[c] = { title: val('fTitle'), date: val('fDate'), start: val('fStart'), end: val('fEnd'), memo: val('fMemo') };
   saveJSON(DRAFT_KEY, draft);
 }
+// タブ切り替え時、入力中の文言を切り替え先の主入力欄へ引き継ぐ
+var CARRY_ID = { diary: 'fBody', think: 'fBody', shop: 'fName', sched: 'fTitle' };
+var CARRY_KEY = { diary: 'body', think: 'body', shop: 'name', sched: 'title' };
+function carryOver(from, to) {
+  if (from === to) return;
+  var text = val(CARRY_ID[from]); if (!text) return;
+  draft[to] = draft[to] || {};
+  draft[to][CARRY_KEY[to]] = text;
+  var isLog = function (k) { return k === 'diary' || k === 'think'; };
+  if (isLog(from) && isLog(to)) { var u = val('fUrl'); if (u) draft[to].url = u; }
+  saveJSON(DRAFT_KEY, draft);
+}
 function submit() {
   if (S.busy) return;
-  var c = S.sheetCat, p;
+  var c = S.sheetCat, p, sent = val(CARRY_ID[c]);
   if (c === 'diary' || c === 'think') {
     var body = val('fBody'); if (!body) return toast('内容を入力してください');
     var pr = c === 'diary' ? PROMPTS.filter(function (x) { return x.key === S.prompt; })[0].prefix : '';
@@ -541,7 +553,10 @@ function submit() {
   }
   S.busy = true; $('submit').disabled = true; $('submit').textContent = '送信中…';
   p.then(function () {
-    draft[c] = {}; saveJSON(DRAFT_KEY, draft);
+    draft[c] = {};
+    // 他タブへ引き継がれた同じ文言の下書きも消す
+    Object.keys(draft).forEach(function (k) { if (sent && draft[k] && draft[k][CARRY_KEY[k]] === sent) draft[k] = {}; });
+    saveJSON(DRAFT_KEY, draft);
     S.busy = false; $('submit').disabled = false; $('submit').textContent = '記録する';
     $('ov').classList.remove('on'); $('sheet').classList.remove('on');
     toast('記録しました');
@@ -592,7 +607,7 @@ document.addEventListener('click', function (e) {
   if (ds.toggle) return shopToggle(ds.toggle);
   if (ds.del) { S.shop = S.shop.filter(function (x) { return x.id !== ds.del; }); renderAll(); return api('shopDelete', { id: ds.del }).then(setShop, fail); }
   if (ds.tab) { S.listTab = ds.tab; return renderList(); }
-  if (ds.cat) { saveDraft(); S.sheetCat = ds.cat; return renderSheet(); }
+  if (ds.cat) { saveDraft(); var from = S.sheetCat; S.sheetCat = ds.cat; carryOver(from, ds.cat); return renderSheet(); }
   if (ds.prompt) { saveDraft(); S.prompt = ds.prompt; return renderSheet(); }
   if (ds.mood) { var n = +ds.mood; S.mood = S.mood === n ? null : n; document.querySelectorAll('.md').forEach(function (b) { b.classList.toggle('on', +b.dataset.mood === S.mood); }); return; }
   if (ds.where) { S.where = ds.where; document.querySelectorAll('[data-where]').forEach(function (b) { b.classList.toggle('on', b.dataset.where === S.where); }); return; }
