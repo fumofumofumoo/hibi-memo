@@ -430,9 +430,10 @@ function renderCalendar() {
 function renderList() {
   var m = S.months[monthOf(S.todayStr)];
   var thinks = m ? m.logs.filter(function (l) { return l.category === 'think'; }).slice().reverse() : [];
+  var diaries = m ? m.logs.filter(function (l) { return l.category === 'diary'; }).slice().reverse() : [];
   var scheds = m ? m.schedules.filter(function (s) { return s.date >= S.todayStr; }).sort(function (a, b) { return (a.date + a.startTime) < (b.date + b.startTime) ? -1 : 1; }) : [];
   var nShop = S.shop.filter(function (x) { return !x.done; }).length;
-  var tabs = [['shop', '買い物 ' + nShop], ['think', '検討 ' + thinks.length], ['sched', '予定 ' + scheds.length]];
+  var tabs = [['shop', '買い物 ' + nShop], ['diary', '日記 ' + diaries.length], ['think', '検討 ' + thinks.length], ['sched', '予定 ' + scheds.length]];
   $('listTabs').innerHTML = tabs.map(function (t) { return '<button class="pill' + (S.listTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('');
 
   var html = '';
@@ -450,6 +451,8 @@ function renderList() {
       if (S.showDone) html += '<div class="card grp">' + done.map(shopRow).join('') + '</div>';
     }
     if (!S.shop.length) html += '<div class="empty">買うものはありません</div>';
+  } else if (S.listTab === 'diary') {
+    html += diaries.length ? diaries.map(function (l) { return entHtml({ cat: 'diary', time: l.date.slice(5).replace('-', '/') + ' ' + l.time, body: l.body, url: l.url, img: l.imageUrl }); }).join('') : '<div class="empty">今月の日記はまだありません</div>';
   } else if (S.listTab === 'think') {
     html += thinks.length ? thinks.map(function (l) { return entHtml({ cat: 'think', time: l.date.slice(5).replace('-', '/') + ' ' + l.time, body: l.body, url: l.url, img: l.imageUrl }); }).join('') : '<div class="empty">今月の検討はまだありません</div>';
   } else {
