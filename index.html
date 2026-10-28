@@ -75,6 +75,8 @@ button{cursor:pointer}
 .pills{display:flex;gap:6px;flex-wrap:wrap}
 .pill{height:42px;padding:0 16px;border-radius:21px;border:2px solid var(--ink);background:var(--white);font-size:13px;font-weight:700}
 .pill.on{background:var(--lime);font-weight:800}
+.pills.sub{margin-bottom:10px}
+.pills.sub .pill{height:34px;padding:0 12px;font-size:12px;border-radius:17px}
 
 /* list */
 .grp{overflow:hidden}
@@ -267,7 +269,7 @@ function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 var cfg = loadJSON(CFG_KEY, null);
 var S = {
   today: null, todayStr: '', selDate: '', calMonth: '',
-  months: {}, shop: [], view: 'home', listTab: 'shop', showDone: false,
+  months: {}, shop: [], view: 'home', listTab: 'shop', diaryTag: 'all', diaryOld: false, showDone: false,
   sheetCat: 'diary', prompt: 'cute', mood: null, imageUrl: '', where: 'その他', busy: false
 };
 var draft = loadJSON(DRAFT_KEY, {});
@@ -456,7 +458,13 @@ function renderList() {
     }
     if (!S.shop.length) html += '<div class="empty">買うものはありません</div>';
   } else if (S.listTab === 'diary') {
-    html += diaries.length ? diaries.map(function (l) { return entHtml({ cat: 'diary', time: l.date.slice(5).replace('-', '/') + ' ' + l.time, body: l.body, url: l.url, img: l.imageUrl }); }).join('') : '<div class="empty">今月の日記はまだありません</div>';
+    var DTAGS = [['all', 'すべて'], ['気づき', '気づき'], ['体調', '体調'], ['明日', '明日'], ['none', 'タグなし']];
+    var tagOf = function (b) { var mt = /^【(気づき|体調|明日)】/.exec(b || ''); return mt ? mt[1] : 'none'; };
+    var cntOf = function (k) { return k === 'all' ? diaries.length : diaries.filter(function (l) { return tagOf(l.body) === k; }).length; };
+    html += '<div class="pills sub">' + DTAGS.map(function (t) { return '<button class="pill' + (S.diaryTag === t[0] ? ' on' : '') + '" data-dtag="' + t[0] + '">' + t[1] + ' ' + cntOf(t[0]) + '</button>'; }).join('') + '<button class="pill" data-dsort="1">' + (S.diaryOld ? '古い順' : '新しい順') + '</button></div>';
+    var shown = diaries.filter(function (l) { return S.diaryTag === 'all' || tagOf(l.body) === S.diaryTag; });
+    if (S.diaryOld) shown = shown.slice().reverse();
+    html += shown.length ? shown.map(function (l) { return entHtml({ cat: 'diary', time: l.date.slice(5).replace('-', '/') + ' ' + l.time, body: l.body, url: l.url, img: l.imageUrl }); }).join('') : '<div class="empty">' + (diaries.length ? 'このタグの日記はありません' : '今月の日記はまだありません') + '</div>';
   } else if (S.listTab === 'think') {
     html += thinks.length ? thinks.map(function (l) { return entHtml({ cat: 'think', time: l.date.slice(5).replace('-', '/') + ' ' + l.time, body: l.body, url: l.url, img: l.imageUrl }); }).join('') : '<div class="empty">今月の検討はまだありません</div>';
   } else {
@@ -610,6 +618,8 @@ document.addEventListener('click', function (e) {
   if (ds.date) { S.selDate = ds.date; return go('home'); }
   if (ds.toggle) return shopToggle(ds.toggle);
   if (ds.del) { S.shop = S.shop.filter(function (x) { return x.id !== ds.del; }); renderAll(); return api('shopDelete', { id: ds.del }).then(setShop, fail); }
+  if (ds.dtag) { S.diaryTag = ds.dtag; return renderList(); }
+  if (ds.dsort) { S.diaryOld = !S.diaryOld; return renderList(); }
   if (ds.tab) { S.listTab = ds.tab; return renderList(); }
   if (ds.gotab) { S.listTab = ds.gotab; return go('list'); }
   if (ds.cat) { saveDraft(); var from = S.sheetCat; S.sheetCat = ds.cat; carryOver(from, ds.cat); return renderSheet(); }
