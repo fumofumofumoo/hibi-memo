@@ -259,7 +259,7 @@ var PROMPTS = [
   { key: 'cute',  label: 'かわいかったこと', ph: '今日の気づき', prefix: '' },
   { key: 'aware', label: '気づき',           ph: '今日の気づき',                     prefix: '【気づき】' },
   { key: 'body',  label: '体調',             ph: '今日の体調・からだのこと',         prefix: '【体調】' },
-  { key: 'next',  label: '明日やること',     ph: '明日やること',                     prefix: '【明日】' }
+  { key: 'next',  label: '今後やること',     ph: '今後やること',                     prefix: '【今後】' }
 ];
 var DOW = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -458,8 +458,9 @@ function renderList() {
     }
     if (!S.shop.length) html += '<div class="empty">買うものはありません</div>';
   } else if (S.listTab === 'diary') {
-    var DTAGS = [['all', 'すべて'], ['気づき', '気づき'], ['体調', '体調'], ['明日', '明日'], ['none', 'タグなし']];
-    var tagOf = function (b) { var mt = /^【(気づき|体調|明日)】/.exec(b || ''); return mt ? mt[1] : 'none'; };
+    var DTAGS = [['all', 'すべて'], ['気づき', '気づき'], ['体調', '体調'], ['今後', '今後'], ['none', 'タグなし']];
+    // 旧タグ【明日】で保存済みの日記も「今後」として扱う
+    var tagOf = function (b) { var mt = /^【(気づき|体調|今後|明日)】/.exec(b || ''); return mt ? (mt[1] === '明日' ? '今後' : mt[1]) : 'none'; };
     var cntOf = function (k) { return k === 'all' ? diaries.length : diaries.filter(function (l) { return tagOf(l.body) === k; }).length; };
     html += '<div class="pills sub">' + DTAGS.map(function (t) { return '<button class="pill' + (S.diaryTag === t[0] ? ' on' : '') + '" data-dtag="' + t[0] + '">' + t[1] + ' ' + cntOf(t[0]) + '</button>'; }).join('') + '<button class="pill" data-dsort="1">' + (S.diaryOld ? '古い順' : '新しい順') + '</button></div>';
     var shown = diaries.filter(function (l) { return S.diaryTag === 'all' || tagOf(l.body) === S.diaryTag; });
