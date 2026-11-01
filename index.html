@@ -64,6 +64,8 @@ button{cursor:pointer}
 .ent-body{font-size:14px;font-weight:500;line-height:1.6;margin-top:2px;white-space:pre-wrap;word-break:break-word}
 .ent-body a{color:var(--ink)}
 .ent img{width:56px;height:56px;object-fit:cover;border-radius:12px;border:2px solid var(--ink)}
+.thumb{flex:none;display:block;line-height:0}
+.row .thumb img{width:36px;height:36px;object-fit:cover;border-radius:8px;border:2px solid var(--ink)}
 .empty{font-size:13px;color:var(--sub);text-align:center;padding:16px}
 .add{display:flex;align-items:center;gap:10px;background:var(--white);border:2px dashed var(--ink);border-radius:20px;padding:14px 16px;font-size:14px;font-weight:500;color:var(--sub);width:100%;text-align:left}
 
@@ -254,7 +256,7 @@ var CATS = {
   sched: { label: '予定',   color: 'var(--coral)' }
 };
 var CAT_ORDER = ['diary', 'shop', 'think', 'sched'];
-var GROUPS = ['スーパー', '100均', 'その他'];
+var GROUPS = ['スーパー', 'ドラッグストア', '100均', 'その他'];
 var PROMPTS = [
   { key: 'cute',  label: 'かわいかったこと', ph: '今日の気づき', prefix: '' },
   { key: 'aware', label: '気づき',           ph: '今日の気づき',                     prefix: '【気づき】' },
@@ -311,7 +313,7 @@ function itemsOn(m, date) {
   m.shopAdds.forEach(function (h) {
     if (h.date !== date) return;
     var live = S.shop.filter(function (x) { return x.id === h.id; })[0];
-    out.push({ cat: 'shop', time: h.time, body: h.name, id: h.id, done: live ? live.done : h.done, gone: !live });
+    out.push({ cat: 'shop', time: h.time, body: h.name, id: h.id, done: live ? live.done : h.done, gone: !live, img: (live && live.imageUrl) || h.imageUrl });
   });
   out.sort(function (a, b) { return a.time < b.time ? -1 : 1; });
   return out;
@@ -379,11 +381,13 @@ function cntCell(cat, n, unit) {
 }
 function entHtml(i) {
   var right = '';
-  if (i.cat === 'shop' && !i.gone) right = '<button class="chk' + (i.done ? ' on' : '') + '" data-toggle="' + esc(i.id) + '" aria-label="購入済みにする">' + (i.done ? checkSvg() : '') + '</button>';
+  if (i.cat === 'shop' && i.img) right += imgThumb(i.img);
+  if (i.cat === 'shop' && !i.gone) right += '<button class="chk' + (i.done ? ' on' : '') + '" data-toggle="' + esc(i.id) + '" aria-label="購入済みにする">' + (i.done ? checkSvg() : '') + '</button>';
   else if (i.img) right = '<a href="' + esc(i.img) + '" target="_blank" rel="noopener" aria-label="添付画像"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#141416" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg></a>';
   var body = linkify(i.body) + (i.url ? '<br><a href="' + esc(i.url) + '" target="_blank" rel="noopener">' + esc(i.url) + '</a>' : '');
   return '<div class="ent" style="background:' + CATS[i.cat].color + '"><div class="ent-main"><div class="ent-top"><span>' + CATS[i.cat].label + '</span><span>' + esc(i.time) + '</span></div><div class="ent-body"' + (i.done ? ' style="text-decoration:line-through"' : '') + '>' + body + '</div></div>' + right + '</div>';
 }
+function imgThumb(u) { return '<a class="thumb" href="' + esc(u) + '" target="_blank" rel="noopener" aria-label="添付画像"><img src="' + esc(u) + '" alt=""></a>'; }
 function checkSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D4F53C" stroke-width="3.2" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>'; }
 
 /* ============ カレンダー ============ */
@@ -444,8 +448,8 @@ function renderList() {
 
   var html = '';
   if (S.listTab === 'shop') {
-    html += '<div class="card quick"><label for="quick" style="font-size:12px;font-weight:800">追加</label><input id="quick" placeholder="例：牛乳 @スーパー" enterkeyhint="done"><button class="sq" id="quickAdd" aria-label="追加する"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4F53C" stroke-width="2.6" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><div class="hint">「@スーパー」「@100均」でお店を指定（なしはその他）</div>';
-    var head = { 'スーパー': 'var(--sky)', '100均': 'var(--lime)', 'その他': 'var(--pink)' };
+    html += '<div class="card quick"><label for="quick" style="font-size:12px;font-weight:800">追加</label><input id="quick" placeholder="例：牛乳 @スーパー" enterkeyhint="done"><button class="sq" id="quickAdd" aria-label="追加する"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4F53C" stroke-width="2.6" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><div class="hint">「@スーパー」「@ドラッグストア」「@100均」でお店を指定（なしはその他）。写真付きは＋ボタンから</div>';
+    var head = { 'スーパー': 'var(--sky)', 'ドラッグストア': 'var(--coral)', '100均': 'var(--lime)', 'その他': 'var(--pink)' };
     GROUPS.forEach(function (g) {
       var items = S.shop.filter(function (x) { return (GROUPS.indexOf(x.where) >= 0 ? x.where : 'その他') === g && !x.done; });
       if (!items.length) return;
@@ -474,7 +478,7 @@ function renderList() {
   $('listBody').innerHTML = html;
 }
 function shopRow(x) {
-  return '<div class="row' + (x.done ? ' done' : '') + '"><button class="chk' + (x.done ? ' on' : '') + '" data-toggle="' + esc(x.id) + '" aria-label="購入済みにする">' + (x.done ? checkSvg() : '') + '</button><input value="' + esc(x.name) + '" data-rename="' + esc(x.id) + '" aria-label="品名"><button class="x" data-del="' + esc(x.id) + '" aria-label="削除"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141416" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
+  return '<div class="row' + (x.done ? ' done' : '') + '"><button class="chk' + (x.done ? ' on' : '') + '" data-toggle="' + esc(x.id) + '" aria-label="購入済みにする">' + (x.done ? checkSvg() : '') + '</button>' + (x.imageUrl ? imgThumb(x.imageUrl) : '') + '<input value="' + esc(x.name) + '" data-rename="' + esc(x.id) + '" aria-label="品名"><button class="x" data-del="' + esc(x.id) + '" aria-label="削除"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141416" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
 }
 function setShop(list) { S.shop = list; renderAll(); }
 function shopToggle(id) {
@@ -484,7 +488,7 @@ function shopToggle(id) {
 function quickAdd() {
   var v = $('quick').value.trim(); if (!v) return;
   var where = 'その他', mm = v.match(/\s*[@＠](\S+)\s*$/);
-  if (mm) { v = v.slice(0, mm.index).trim(); where = /100|百均|ダイソー|セリア|キャンドゥ/.test(mm[1]) ? '100均' : /スーパー|super/i.test(mm[1]) ? 'スーパー' : 'その他'; }
+  if (mm) { v = v.slice(0, mm.index).trim(); where = /100|百均|ダイソー|セリア|キャンドゥ/.test(mm[1]) ? '100均' : /ドラッグ|ドラスト|薬|マツキヨ|ウエルシア|ツルハ|スギ|サンドラッグ|ココカラ|drug/i.test(mm[1]) ? 'ドラッグストア' : /スーパー|super/i.test(mm[1]) ? 'スーパー' : 'その他'; }
   if (!v) return;
   $('quick').value = '';
   api('shopAdd', { name: v, where: where }).then(function (list) { setShop(list); refreshMonth(); toast('追加しました'); }, fail);
@@ -506,10 +510,10 @@ function renderSheet() {
   var d = draft[c] || {}, html = '';
   if (c === 'diary' || c === 'think') {
     if (c === 'diary') {
-      html += '<span class="lbl">今日の問い（タップで切り替え）</span><div class="qs">' + PROMPTS.map(function (p) { return '<button class="q' + (S.prompt === p.key ? ' on' : '') + '" data-prompt="' + p.key + '">' + p.label + '</button>'; }).join('') + '</div>';
+      html += '<span class="lbl">タブ（タップで切り替え）</span><div class="qs">' + PROMPTS.map(function (p) { return '<button class="q' + (S.prompt === p.key ? ' on' : '') + '" data-prompt="' + p.key + '">' + p.label + '</button>'; }).join('') + '</div>';
     }
     var ph = c === 'diary' ? PROMPTS.filter(function (p) { return p.key === S.prompt; })[0].ph : '検討していること';
-    html += '<label class="lbl" for="fBody">' + (c === 'diary' ? '今日のこと' : '検討していること') + '</label><div class="box grow"><textarea id="fBody" placeholder="' + esc(ph) + '">' + esc(d.body || '') + '</textarea>';
+    html += '<label class="lbl" for="fBody">' + (c === 'diary' ? 'どうだった？' : '検討していること') + '</label><div class="box grow"><textarea id="fBody" placeholder="' + esc(ph) + '">' + esc(d.body || '') + '</textarea>';
     if (c === 'diary') {
       html += '<div class="moods">気分' + [1, 2, 3, 4, 5].map(function (n) { return '<button class="md' + (S.mood === n ? ' on' : '') + '" data-mood="' + n + '" aria-label="気分 ' + n + '">' + n + '</button>'; }).join('') + '</div>';
     }
@@ -527,7 +531,6 @@ function renderSheet() {
     html += '<div class="note" style="text-align:left">登録するとGoogleカレンダーにも自動で追加されます</div>';
   }
   $('form').innerHTML = html;
-  $('imgBtn').style.display = c === 'shop' ? 'none' : '';
 }
 function val(id) { var e = $(id); return e ? e.value.trim() : ''; }
 function saveDraft() {
@@ -558,7 +561,7 @@ function submit() {
     p = api('submitLog', { category: c, body: pr + body, url: val('fUrl'), imageUrl: S.imageUrl, mood: c === 'diary' ? S.mood : null });
   } else if (c === 'shop') {
     var name = val('fName'); if (!name) return toast('品名を入力してください');
-    p = api('shopAdd', { name: name, where: S.where }).then(function (list) { S.shop = list; });
+    p = api('shopAdd', { name: name, where: S.where, imageUrl: S.imageUrl }).then(function (list) { S.shop = list; });
   } else {
     var title = val('fTitle'); if (!title) return toast('タイトルを入力してください');
     p = api('submitSchedule', { title: title, date: val('fDate'), startTime: val('fStart'), endTime: val('fEnd'), memo: val('fMemo'), imageUrl: S.imageUrl })
