@@ -64,8 +64,7 @@ button{cursor:pointer}
 .ent-body{font-size:14px;font-weight:500;line-height:1.6;margin-top:2px;white-space:pre-wrap;word-break:break-word}
 .ent-body a{color:var(--ink)}
 .ent img{width:56px;height:56px;object-fit:cover;border-radius:12px;border:2px solid var(--ink)}
-.thumb{flex:none;display:block;line-height:0}
-.row .thumb img{width:36px;height:36px;object-fit:cover;border-radius:8px;border:2px solid var(--ink)}
+.thumb{flex:none;display:flex;align-items:center;justify-content:center;width:40px;height:40px}
 .empty{font-size:13px;color:var(--sub);text-align:center;padding:16px}
 .add{display:flex;align-items:center;gap:10px;background:var(--white);border:2px dashed var(--ink);border-radius:20px;padding:14px 16px;font-size:14px;font-weight:500;color:var(--sub);width:100%;text-align:left}
 
@@ -387,7 +386,8 @@ function entHtml(i) {
   var body = linkify(i.body) + (i.url ? '<br><a href="' + esc(i.url) + '" target="_blank" rel="noopener">' + esc(i.url) + '</a>' : '');
   return '<div class="ent" style="background:' + CATS[i.cat].color + '"><div class="ent-main"><div class="ent-top"><span>' + CATS[i.cat].label + '</span><span>' + esc(i.time) + '</span></div><div class="ent-body"' + (i.done ? ' style="text-decoration:line-through"' : '') + '>' + body + '</div></div>' + right + '</div>';
 }
-function imgThumb(u) { return '<a class="thumb" href="' + esc(u) + '" target="_blank" rel="noopener" aria-label="添付画像"><img src="' + esc(u) + '" alt=""></a>'; }
+// 画像はDriveの非公開ファイルなので、サムネイルではなくアイコンからDriveで開く
+function imgThumb(u) { return '<a class="thumb" href="' + esc(u) + '" target="_blank" rel="noopener" aria-label="添付画像"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#141416" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg></a>'; }
 function checkSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D4F53C" stroke-width="3.2" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>'; }
 
 /* ============ カレンダー ============ */
