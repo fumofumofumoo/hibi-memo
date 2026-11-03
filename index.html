@@ -308,14 +308,24 @@ function itemsOn(m, date) {
   var out = [];
   if (!m) return out;
   m.logs.forEach(function (l) { if (l.date === date) out.push({ cat: l.category === 'think' ? 'think' : 'diary', time: l.time, body: l.body, url: l.url, img: l.imageUrl }); });
-  m.schedules.forEach(function (s) { if (s.date === date) out.push({ cat: 'sched', id: s.id, time: s.startTime, body: s.title + (s.endTime ? '（' + s.startTime + '〜' + s.endTime + '）' : '') + (s.memo ? '\n' + s.memo : '') }); });
+  m.schedules.forEach(function (s) { if (schedOn(s, date)) out.push({ cat: 'sched', id: s.id, time: s.allDay ? '終日' : s.startTime, sort: s.allDay ? '' : s.startTime, body: s.title + schedSpan(s) + (s.memo ? '\n' + s.memo : '') }); });
   m.shopAdds.forEach(function (h) {
     if (h.date !== date) return;
     var live = S.shop.filter(function (x) { return x.id === h.id; })[0];
     out.push({ cat: 'shop', time: h.time, body: h.name, id: h.id, done: live ? live.done : h.done, gone: !live, img: (live && live.imageUrl) || h.imageUrl });
   });
-  out.sort(function (a, b) { return a.time < b.time ? -1 : 1; });
+  out.sort(function (a, b) { var x = a.sort != null ? a.sort : a.time, y = b.sort != null ? b.sort : b.time; return x < y ? -1 : 1; });
   return out;
+}
+function schedEnd(s) { return s.endDate && s.endDate > s.date ? s.endDate : s.date; }
+function schedOn(s, date) { return s.date <= date && date <= schedEnd(s); }
+function mdLabel(ds) { return +ds.slice(5, 7) + '/' + +ds.slice(8, 10); }
+// 予定タイトルの後ろに付ける期間・時間の補足
+function schedSpan(s) {
+  var multi = schedEnd(s) !== s.date;
+  if (s.allDay) return multi ? '（' + mdLabel(s.date) + '〜' + mdLabel(schedEnd(s)) + '）' : '';
+  if (multi) return '（' + mdLabel(s.date) + ' ' + s.startTime + '〜' + mdLabel(schedEnd(s)) + ' ' + s.endTime + '）';
+  return s.endTime ? '（' + s.startTime + '〜' + s.endTime + '）' : '';
 }
 function catsOn(m, date) {
   var set = {};
@@ -361,7 +371,7 @@ function renderHome() {
   var nDiary = 0, nThink = 0, nSched = 0;
   if (m) {
     m.logs.forEach(function (l) { if (l.category === 'think') nThink++; else nDiary++; });
-    m.schedules.forEach(function (s) { if (s.date >= S.todayStr) nSched++; });
+    m.schedules.forEach(function (s) { if (schedEnd(s) >= S.todayStr) nSched++; });
   }
   var nShop = S.shop.filter(function (x) { return !x.done; }).length;
   $('counts').innerHTML =
@@ -442,7 +452,7 @@ function renderList() {
   var m = S.months[monthOf(S.todayStr)];
   var thinks = m ? m.logs.filter(function (l) { return l.category === 'think'; }).slice().reverse() : [];
   var diaries = m ? m.logs.filter(function (l) { return l.category === 'diary'; }).slice().reverse() : [];
-  var scheds = m ? m.schedules.filter(function (s) { return s.date >= S.todayStr; }).sort(function (a, b) { return (a.date + a.startTime) < (b.date + b.startTime) ? -1 : 1; }) : [];
+  var scheds = m ? m.schedules.filter(function (s) { return schedEnd(s) >= S.todayStr; }).sort(function (a, b) { return (a.date + a.startTime) < (b.date + b.startTime) ? -1 : 1; }) : [];
   var nShop = S.shop.filter(function (x) { return !x.done; }).length;
   var tabs = [['shop', '買い物 ' + nShop], ['diary', '日記 ' + diaries.length], ['think', '検討 ' + thinks.length], ['sched', '予定 ' + scheds.length]];
   $('listTabs').innerHTML = tabs.map(function (t) { return '<button class="pill' + (S.listTab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('');
@@ -474,7 +484,7 @@ function renderList() {
   } else if (S.listTab === 'think') {
     html += thinks.length ? thinks.map(function (l) { return entHtml({ cat: 'think', time: l.date.slice(5).replace('-', '/') + ' ' + l.time, body: l.body, url: l.url, img: l.imageUrl }); }).join('') : '<div class="empty">今月の検討はまだありません</div>';
   } else {
-    html += scheds.length ? scheds.map(function (s) { return entHtml({ cat: 'sched', id: s.id, time: s.date.slice(5).replace('-', '/') + ' ' + s.startTime, body: s.title + (s.memo ? '\n' + s.memo : '') }); }).join('') : '<div class="empty">今月これからの予定はありません</div>';
+    html += scheds.length ? scheds.map(function (s) { return entHtml({ cat: 'sched', id: s.id, time: s.date.slice(5).replace('-', '/') + ' ' + (s.allDay ? '終日' : s.startTime), body: s.title + schedSpan(s) + (s.memo ? '\n' + s.memo : '') }); }).join('') : '<div class="empty">今月これからの予定はありません</div>';
   }
   $('listBody').innerHTML = html;
 }
@@ -526,8 +536,10 @@ function renderSheet() {
     var nowT = new Date(now); nowT.setMinutes(Math.floor(now.getMinutes() / 15) * 15, 0, 0);
     var endT = new Date(nowT.getTime() + 3600000);
     html += '<label class="lbl" for="fTitle">タイトル</label><input class="fld" id="fTitle" value="' + esc(d.title || '') + '">';
-    html += '<label class="lbl" for="fDate">日付</label><input class="fld" type="date" id="fDate" value="' + esc(d.date || S.todayStr) + '">';
-    html += '<span class="lbl">時間</span><div class="r2"><input class="fld" type="time" step="300" id="fStart" aria-label="開始" value="' + (d.start || pad(nowT.getHours()) + ':' + pad(nowT.getMinutes())) + '"><span>〜</span><input class="fld" type="time" step="300" id="fEnd" aria-label="終了" value="' + (d.end || pad(endT.getHours()) + ':' + pad(endT.getMinutes())) + '"></div>';
+    var dDate = d.date || S.todayStr;
+    html += '<span class="lbl">日付</span><div class="r2"><input class="fld" type="date" id="fDate" aria-label="開始日" value="' + esc(dDate) + '"><span>〜</span><input class="fld" type="date" id="fEndDate" aria-label="終了日" value="' + esc(d.endDate && d.endDate > dDate ? d.endDate : dDate) + '"></div>';
+    html += '<div class="qs"><button class="q' + (d.allDay ? ' on' : '') + '" data-allday="1" aria-pressed="' + !!d.allDay + '">終日</button></div>';
+    if (!d.allDay) html += '<span class="lbl">時間</span><div class="r2"><input class="fld" type="time" step="300" id="fStart" aria-label="開始" value="' + (d.start || pad(nowT.getHours()) + ':' + pad(nowT.getMinutes())) + '"><span>〜</span><input class="fld" type="time" step="300" id="fEnd" aria-label="終了" value="' + (d.end || pad(endT.getHours()) + ':' + pad(endT.getMinutes())) + '"></div>';
     html += '<label class="lbl" for="fMemo">メモ</label><div class="box"><textarea id="fMemo" style="min-height:80px">' + esc(d.memo || '') + '</textarea></div>';
     html += '<div class="note" style="text-align:left">登録するとGoogleカレンダーにも自動で追加されます</div>';
   }
@@ -538,7 +550,10 @@ function saveDraft() {
   var c = S.sheetCat;
   if (c === 'diary' || c === 'think') draft[c] = { body: val('fBody'), url: val('fUrl') };
   else if (c === 'shop') draft[c] = { name: val('fName') };
-  else draft[c] = { title: val('fTitle'), date: val('fDate'), start: val('fStart'), end: val('fEnd'), memo: val('fMemo') };
+  else {
+    var prev = draft[c] || {};
+    draft[c] = { title: val('fTitle'), date: val('fDate'), endDate: val('fEndDate'), allDay: !!prev.allDay, start: val('fStart') || prev.start, end: val('fEnd') || prev.end, memo: val('fMemo') };
+  }
   saveJSON(DRAFT_KEY, draft);
 }
 // タブ切り替え時、入力中の文言を切り替え先の主入力欄へ引き継ぐ
@@ -565,7 +580,10 @@ function submit() {
     p = api('shopAdd', { name: name, where: S.where, imageUrl: S.imageUrl }).then(function (list) { S.shop = list; });
   } else {
     var title = val('fTitle'); if (!title) return toast('タイトルを入力してください');
-    p = api('submitSchedule', { title: title, date: val('fDate'), startTime: val('fStart'), endTime: val('fEnd'), memo: val('fMemo'), imageUrl: S.imageUrl })
+    var sDate = val('fDate'), eDate = val('fEndDate');
+    if (eDate && eDate < sDate) return toast('終了日は開始日以降にしてください');
+    var allDay = !!(draft.sched && draft.sched.allDay);
+    p = api('submitSchedule', { title: title, date: sDate, endDate: eDate || sDate, allDay: allDay, startTime: val('fStart'), endTime: val('fEnd'), memo: val('fMemo'), imageUrl: S.imageUrl })
       .then(function (r) { if (r && r.calendarRegistered === false) toast('カレンダー登録に失敗しました'); });
   }
   S.busy = true; $('submit').disabled = true; $('submit').textContent = '送信中…';
@@ -637,6 +655,7 @@ document.addEventListener('click', function (e) {
   if (ds.toggle) return shopToggle(ds.toggle);
   if (ds.del) { S.shop = S.shop.filter(function (x) { return x.id !== ds.del; }); renderAll(); return api('shopDelete', { id: ds.del }).then(setShop, fail); }
   if (ds.sdel) return schedDelete(ds.sdel);
+  if (ds.allday) { saveDraft(); draft.sched.allDay = !draft.sched.allDay; saveJSON(DRAFT_KEY, draft); return renderSheet(); }
   if (ds.dtag) { S.diaryTag = ds.dtag; return renderList(); }
   if (ds.dsort) { S.diaryOld = !S.diaryOld; return renderList(); }
   if (ds.tab) { S.listTab = ds.tab; return renderList(); }
@@ -659,6 +678,8 @@ document.addEventListener('click', function (e) {
   }
 });
 document.addEventListener('change', function (e) {
+  // 開始日を終了日より後にしたら、終了日も合わせる
+  if (e.target.id === 'fDate' && $('fEndDate') && $('fEndDate').value < e.target.value) $('fEndDate').value = e.target.value;
   if (e.target.id === 'fStart' && /^\d{1,2}:\d{2}$/.test(e.target.value)) {
     // 開始時間を入力したら、終了時間は1時間後（23:59が上限）
     var sp = e.target.value.split(':'), mins = Math.min(+sp[0] * 60 + +sp[1] + 60, 23 * 60 + 59);
