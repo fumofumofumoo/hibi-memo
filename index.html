@@ -308,7 +308,7 @@ function itemsOn(m, date) {
   var out = [];
   if (!m) return out;
   m.logs.forEach(function (l) { if (l.date === date) out.push({ cat: l.category === 'think' ? 'think' : 'diary', time: l.time, body: l.body, url: l.url, img: l.imageUrl }); });
-  m.schedules.forEach(function (s) { if (s.date === date) out.push({ cat: 'sched', time: s.startTime, body: s.title + (s.endTime ? '（' + s.startTime + '〜' + s.endTime + '）' : '') + (s.memo ? '\n' + s.memo : '') }); });
+  m.schedules.forEach(function (s) { if (s.date === date) out.push({ cat: 'sched', id: s.id, time: s.startTime, body: s.title + (s.endTime ? '（' + s.startTime + '〜' + s.endTime + '）' : '') + (s.memo ? '\n' + s.memo : '') }); });
   m.shopAdds.forEach(function (h) {
     if (h.date !== date) return;
     var live = S.shop.filter(function (x) { return x.id === h.id; })[0];
@@ -383,6 +383,7 @@ function entHtml(i) {
   if (i.cat === 'shop' && i.img) right += imgThumb(i.img);
   if (i.cat === 'shop' && !i.gone) right += '<button class="chk' + (i.done ? ' on' : '') + '" data-toggle="' + esc(i.id) + '" aria-label="購入済みにする">' + (i.done ? checkSvg() : '') + '</button>';
   else if (i.img) right = '<a href="' + esc(i.img) + '" target="_blank" rel="noopener" aria-label="添付画像"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#141416" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg></a>';
+  if (i.cat === 'sched' && i.id) right += '<button class="x" data-sdel="' + esc(i.id) + '" aria-label="予定を削除"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#141416" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
   var body = linkify(i.body) + (i.url ? '<br><a href="' + esc(i.url) + '" target="_blank" rel="noopener">' + esc(i.url) + '</a>' : '');
   return '<div class="ent" style="background:' + CATS[i.cat].color + '"><div class="ent-main"><div class="ent-top"><span>' + CATS[i.cat].label + '</span><span>' + esc(i.time) + '</span></div><div class="ent-body"' + (i.done ? ' style="text-decoration:line-through"' : '') + '>' + body + '</div></div>' + right + '</div>';
 }
@@ -473,7 +474,7 @@ function renderList() {
   } else if (S.listTab === 'think') {
     html += thinks.length ? thinks.map(function (l) { return entHtml({ cat: 'think', time: l.date.slice(5).replace('-', '/') + ' ' + l.time, body: l.body, url: l.url, img: l.imageUrl }); }).join('') : '<div class="empty">今月の検討はまだありません</div>';
   } else {
-    html += scheds.length ? scheds.map(function (s) { return entHtml({ cat: 'sched', time: s.date.slice(5).replace('-', '/') + ' ' + s.startTime, body: s.title + (s.memo ? '\n' + s.memo : '') }); }).join('') : '<div class="empty">今月これからの予定はありません</div>';
+    html += scheds.length ? scheds.map(function (s) { return entHtml({ cat: 'sched', id: s.id, time: s.date.slice(5).replace('-', '/') + ' ' + s.startTime, body: s.title + (s.memo ? '\n' + s.memo : '') }); }).join('') : '<div class="empty">今月これからの予定はありません</div>';
   }
   $('listBody').innerHTML = html;
 }
@@ -601,6 +602,19 @@ function onImage(file) {
   img.src = url;
 }
 
+// カレンダーに登録した予定も消えるので確認してから削除する
+function schedDelete(id) {
+  if (!confirm('この予定を削除しますか？（Googleカレンダーからも消えます）')) return;
+  Object.keys(S.months).forEach(function (k) {
+    S.months[k].schedules = S.months[k].schedules.filter(function (s) { return s.id !== id; });
+  });
+  renderAll();
+  return api('scheduleDelete', { id: id }).catch(function (e) {
+    fail(e);
+    Promise.all(Object.keys(S.months).map(function (k) { return getMonth(k, true); })).then(renderAll);
+  });
+}
+
 /* ============ 画面切り替え ============ */
 function go(view) {
   S.view = view;
@@ -622,6 +636,7 @@ document.addEventListener('click', function (e) {
   if (ds.date) { S.selDate = ds.date; return go('home'); }
   if (ds.toggle) return shopToggle(ds.toggle);
   if (ds.del) { S.shop = S.shop.filter(function (x) { return x.id !== ds.del; }); renderAll(); return api('shopDelete', { id: ds.del }).then(setShop, fail); }
+  if (ds.sdel) return schedDelete(ds.sdel);
   if (ds.dtag) { S.diaryTag = ds.dtag; return renderList(); }
   if (ds.dsort) { S.diaryOld = !S.diaryOld; return renderList(); }
   if (ds.tab) { S.listTab = ds.tab; return renderList(); }
